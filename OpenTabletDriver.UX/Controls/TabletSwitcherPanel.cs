@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.Linq;
 using Eto.Drawing;
 using Eto.Forms;
@@ -82,11 +81,7 @@ namespace OpenTabletDriver.UX.Controls
             public TabletSwitcher()
             {
                 this.ItemTextBinding = Binding.Property<Profile, string>(t => t.Tablet);
-                this.DataStore = visibleProfiles;
-                this.SelectedIndex = 0;
             }
-
-            private readonly ObservableCollection<Profile> visibleProfiles = new ObservableCollection<Profile>();
 
             private ProfileCollection profiles;
             public ProfileCollection Profiles
@@ -104,7 +99,6 @@ namespace OpenTabletDriver.UX.Controls
             protected virtual async void OnProfilesChanged()
             {
                 ProfilesChanged?.Invoke(this, new EventArgs());
-                visibleProfiles.Clear();
                 HandleTabletsChanged(this, await App.Driver.Instance.GetTablets());
             }
 
@@ -126,23 +120,25 @@ namespace OpenTabletDriver.UX.Controls
             {
                 if (Profiles is ProfileCollection profiles)
                 {
-                    foreach (var profile in profiles)
-                        visibleProfiles.Remove(profile);
-
-                    foreach (var tablet in tablets)
-                        visibleProfiles.Add(Profiles.FirstOrDefault(p => p.Tablet == tablet.Properties.Name));
+                    this.DataStore = from profile in profiles
+                        where tablets.Any(t => t.Properties.Name == profile.Tablet)
+                        orderby profile.Tablet
+                        select profile;
 
                     if (tablets.Any())
                     {
-                        var tabletsWithoutProfile = from tablet in tablets
+                        var tabletsWithoutProfile = from tablet in tablets 
                             where !profiles.Any(p => p.Tablet == tablet.Properties.Name)
                             select tablet;
 
                         foreach (var tablet in tabletsWithoutProfile)
                             profiles.Generate(tablet);
 
-                        if (this.SelectedIndex < 0)
-                            this.SelectedIndex = 0;
+                        this.SelectedValue ??= this.DataStore.FirstOrDefault();
+                    }
+                    else
+                    {
+                        this.SelectedIndex = -1;
                     }
                 }
             });
