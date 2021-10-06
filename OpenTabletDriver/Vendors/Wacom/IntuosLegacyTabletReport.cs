@@ -14,7 +14,7 @@ namespace OpenTabletDriver.Vendors.Wacom.IntuosLegacy
             }
 
             Raw = report;
-            ReportID = 0;
+            ReportID = (uint)report[1] >> 1;
             Position = new Vector2
             {
                 X = Unsafe.ReadUnaligned<ushort>(ref report[2]),
